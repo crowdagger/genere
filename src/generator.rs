@@ -44,30 +44,46 @@ impl Generator {
         }
     }
 
-    /// Adds a replacement grammar that will replace given symbol by one of those elements.
-    pub fn add(&mut self, symbol: &str, content: &[&str]) -> Result<()>{
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"(.*)\[(\S*)\]").unwrap();
+    /// Adds a replacement grammar using JSON format.
+    pub fn add_json(&mut self, json: &str) -> Result<()> {
+        let map: HashMap<String, Vec<String>> = serde_json::from_str(json)?;
+
+        for (symbol, content) in map {
+            self.add_move(symbol, content)?;
         }
-        
+        Ok(())
+    }
+
+    /// Adds a replacement grammar that will replace given symbol by one of those elements.
+    pub fn add(&mut self, symbol: &str, content: &[&str]) -> Result<()> {
         let symbol: String = symbol.into();
+
         let mut c: Vec<String> = Vec::with_capacity(content.len());
         for s in content {
             c.push(s.to_string());
         }
+        self.add_move(symbol, c)
+    }
+
+    fn add_move(&mut self, symbol: String, content: Vec<String>) -> Result<()> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"(.*)\[(\S*)\]").unwrap();
+        }
+        
+
       
         let cap = RE.captures(&symbol);
         let replacement = if let Some(cap) = cap {
             Replacement {
                 symbol: cap[1].into(),
                 gender_dependency: Some(cap[2].into()),
-                content: c,
+                content: content,
             }
         } else {
             Replacement {
                 symbol: symbol,
                 gender_dependency: None,
-                content: c,
+                content: content,
             }
         };
         
@@ -75,6 +91,7 @@ impl Generator {
         self.replacements.push(replacement);
         Ok(())
     }
+
 
     /// Sets a symbol to a gender
     pub fn set_gender(&mut self, symbol: &str, gender: Gender) {
@@ -175,6 +192,15 @@ impl Generator {
 fn add_1() {
     let mut gen = Generator::new();
     gen.add("Test", &["foo", "bar"]).unwrap();
+}
+
+#[test]
+fn add_json() {
+    let mut gen = Generator::new();
+    gen.add_json(r#"
+{
+   "Test": ["foo", "bar"]
+}"#).unwrap();
 }
 
 #[test]

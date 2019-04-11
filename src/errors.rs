@@ -8,5 +8,6 @@ use error_chain::*;
 error_chain! {
     foreign_links {
         Fmt(::std::fmt::Error);
+        Json(serde_json::error::Error);
     }
 }
