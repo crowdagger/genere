@@ -110,6 +110,7 @@ impl Generator {
             static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
             static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\w*)\]").unwrap();
             static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?").unwrap();
+            static ref RE_DOTS: Regex = Regex::new(r"(\w+)·(\w*)(?:·(\w*))?(?:·(\w*))?").unwrap();
         }
 
         if stack.contains(symbol) {
@@ -173,20 +174,60 @@ impl Generator {
             } else {
                 Gender::Neutral
             };
-            let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
-                println!("{:?}", caps);
+
+            // Replacement of the form "content·e" (used in french)
+            let result = RE_DOTS.replace_all(&result, |caps: &Captures| {
+                let mut len = 3;
+                if caps.get(3).is_some() {
+                    len += 1;
+                }
+                if caps.get(4).is_some() {
+                    len += 1;
+                }
                 match gender_adapt {
-                    Gender::Male => format!("{}", &caps[1]),
-                    Gender::Female => format!("{}", &caps[2]),
-                    Gender::Neutral => {
-                        if caps.len() == 4 {
-                            format!("{}", &caps[3])
-                        } else {
-                            format!("{}/{}", &caps[1],&caps[2])
-                        }
+                    Gender::Male => match len {
+                        3 => format!("{}", &caps[1]),
+                        4 => format!("{}{}", &caps[1], &caps[2]),
+                        5 => format!("{}{}{}", &caps[1], &caps[2], &caps[4]),
+                        _ => unreachable!{}
+                    }
+                    Gender::Female => match len {
+                        3 => format!("{}{}", &caps[1], &caps[2]),
+                        4 => format!("{}{}", &caps[1], &caps[3]),
+                        5 => format!("{}{}{}", &caps[1], &caps[3], &caps[4]),
+                        _ => unreachable!{}
+                    }
+                    Gender::Neutral => match len {
+                        3 => format!("{rad}/{rad}{f}",
+                                     rad = &caps[1],
+                                     f = &caps[2]),
+                        4 => format!("{rad}{m}/{rad}{f}",
+                                     rad = &caps[1],
+                                     m = &caps[2],
+                                     f = &caps[3]),
+                        5 => format!("{rad}{m}{s}/{rad}{f}{s}",
+                                     rad = &caps[1],
+                                     m = &caps[2],
+                                     f = &caps[3],
+                                     s = &caps[4]),
+                        _ => unreachable!{}
                     }
                 }
             });
+
+            // Replacement of the form Male/Female[/Neutral]
+            let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
+                  match gender_adapt {
+                    Gender::Male => format!("{}", &caps[1]),
+                    Gender::Female => format!("{}", &caps[2]),
+                      Gender::Neutral => if caps.get(3).is_some() {
+                          format!("{}", &caps[3])
+                      } else {
+                          format!("{}/{}", &caps[1],&caps[2])
+                      }
+                  }
+            });
+
 
             replaced.insert(symbol.to_string(),
                             Replaced {
