@@ -23,7 +23,7 @@
 //!
 //! ```
 //! use genere::Generator;
-//!     let json = r#"
+//! let json = r#"
 //! {
 //!    "hero": ["John[m]", "Joan[f]"],
 //!    "job[hero]": ["wizard/witch"],
