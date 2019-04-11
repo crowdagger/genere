@@ -56,7 +56,6 @@ impl Generator {
             c.push(s.to_string());
         }
       
-        println!("test");
         let cap = RE.captures(&symbol);
         let replacement = if let Some(cap) = cap {
             Replacement {
@@ -71,7 +70,6 @@ impl Generator {
                 content: c,
             }
         };
-        println!("{:?}", replacement);
         
         
         self.replacements.push(replacement);
@@ -92,6 +90,7 @@ impl Generator {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\{(\S*)\}").unwrap();
             static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
+            static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\S*)\]").unwrap();
             static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
         }
         
@@ -99,6 +98,8 @@ impl Generator {
 
         let mut rng = thread_rng();
         for r in &self.replacements {
+            let mut gender = Gender::Neutral;
+            
             // Pick a random variant 
             let s:&str = if let Some(s) = r.content.choose(&mut rng) {
                 s
@@ -106,17 +107,42 @@ impl Generator {
                 ""
             };
 
+            // Set the gender of the symbol, if needed
+            {
+                let mut i = 0;
+                for caps in RE_SET_GENDER.captures_iter(s) {
+                    i += 1;
+                    if i > 1 {
+                        bail!("multiple genders for symbol '{}' in expression '{}'",
+                              r.symbol,
+                              s);
+                    }
+                    match &caps[1] {
+                        "m" | "M" => gender = Gender::Male,
+                        "f" | "F" => gender = Gender::Female,
+                        "n" | "N" => gender = Gender::Neutral,
+                        _ => bail!("invalid gender {} for symbol '{}' in expression '{}'",
+                                   &caps[1],
+                                   r.symbol,
+                                   s),
+                    }
+                }
+            }
+            
+            let s = RE_SET_GENDER.replace_all(&s, "");
+            
             // Replace {symbols} with replacements
-            let result = RE.replace_all(s, |caps: &Captures| {
+            let result = RE.replace_all(s.as_ref(), |caps: &Captures| {
                 match replaced.get(&caps[1]) {
                     Some(replaced) => replaced.content.clone(),
                     None => String::new(),
                 }
             });
+            
 
             // Gender adaptation, if needed
-//            if RE_GENDER.is_match(&result) {
-            let gender = if let Some(key) = &r.gender_dependency {
+            // Find the gender to replace
+            let gender_adapt = if let Some(key) = &r.gender_dependency {
                 match replaced.get(key.as_str()) {
                     Some(replaced) => replaced.gender,
                     None => Gender::Neutral
@@ -124,19 +150,17 @@ impl Generator {
             } else {
                 Gender::Neutral
             };
-            println!("!");
             let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
-                match gender {
+                match gender_adapt {
                     Gender::Male => format!("{}", &caps[1]),
                     Gender::Female => format!("{}", &caps[2]),
                     Gender::Neutral => format!("{} / {}", &caps[1],&caps[2])
                 }
             });
-            //          }
-            
+
             replaced.insert(r.symbol.clone(),
                             Replaced {
-                                gender: Gender::Neutral,
+                                gender: gender,
                                 content: result.to_string()});
         }
 
@@ -174,5 +198,24 @@ fn replacement_2() {
     gen.add("bar", &["world"]).unwrap();
     gen.add("baz", &["{foo} {bar}"]).unwrap();
     assert_eq!(gen.instantiate("baz").unwrap(), String::from("hello world"));
+}
+
+#[test]
+fn gender_1() {
+    let mut gen = Generator::new();
+    gen.add("foo[plop]", &["He/She is happy"]).unwrap();
+    gen.set_gender("plop", Gender::Male);
+    assert_eq!(&gen.instantiate("foo").unwrap(), "He is happy");
+    gen.set_gender("plop", Gender::Female);
+    assert_eq!(&gen.instantiate("foo").unwrap(), "She is happy");
+}
+
+
+#[test]
+fn gender_2() {
+    let mut gen = Generator::new();
+    gen.add("plop", &["Joe[m]"]).unwrap();
+    gen.add("foo[plop]", &["He/She is happy"]).unwrap();
+    assert_eq!(&gen.instantiate("foo").unwrap(), "He is happy");
 }
 
