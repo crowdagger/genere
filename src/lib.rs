@@ -4,3 +4,6 @@
 
 
 mod errors;
+mod generator;
+
+pub use generator::Generator;

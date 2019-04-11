@@ -16,3 +16,6 @@ path = "src/lib.rs"
 
 [dependencies]
 error-chain = "0.12"
+regex = "1"
+lazy_static = "1"
+rand = "0.6"
