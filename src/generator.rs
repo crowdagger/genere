@@ -26,20 +26,19 @@ struct Replaced {
 
 #[derive(Debug)]
 struct Replacement {
-    pub symbol: String,
     pub gender_dependency: Option<String>,
     pub content: Vec<String>,
 }
 
 pub struct Generator {
     replaced: HashMap<String, Replaced>,
-    replacements: Vec<Replacement>,
+    replacements: HashMap<String, Replacement>,
 }
 
 impl Generator {
     pub fn new() -> Self {
         Generator {
-            replacements: vec![],
+            replacements: HashMap::new(),
             replaced: HashMap::new(),
         }
     }
@@ -73,22 +72,22 @@ impl Generator {
 
       
         let cap = RE.captures(&symbol);
-        let replacement = if let Some(cap) = cap {
-            Replacement {
-                symbol: cap[1].into(),
+        let (symbol, replacement) = if let Some(cap) = cap {
+            let symbol = cap[1].into();
+            (symbol, Replacement {
                 gender_dependency: Some(cap[2].into()),
                 content: content,
-            }
+            })
         } else {
+            (symbol,
             Replacement {
-                symbol: symbol,
                 gender_dependency: None,
                 content: content,
-            }
+            })
         };
         
         
-        self.replacements.push(replacement);
+        self.replacements.insert(symbol, replacement);
         Ok(())
     }
 
@@ -100,25 +99,24 @@ impl Generator {
             content: String::new()
         });
     }
-        
 
-    /// Instantiate a replacement symbol
-    pub fn instantiate(&self, symbol: &str) -> Result<String> {
+
+    fn instantiate_util(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
+                        rng: &mut ThreadRng) -> Result<String> {
+
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\{(\S*)\}").unwrap();
             static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
             static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\S*)\]").unwrap();
             static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
         }
-        
-        let mut replaced = self.replaced.clone();
 
-        let mut rng = thread_rng();
-        for r in &self.replacements {
+
+        if let Some(r) = self.replacements.get(symbol) {
             let mut gender = Gender::Neutral;
             
             // Pick a random variant 
-            let s:&str = if let Some(s) = r.content.choose(&mut rng) {
+            let s:&str = if let Some(s) = r.content.choose(rng) {
                 s
             } else {
                 ""
@@ -131,7 +129,7 @@ impl Generator {
                     i += 1;
                     if i > 1 {
                         bail!("multiple genders for symbol '{}' in expression '{}'",
-                              r.symbol,
+                              symbol,
                               s);
                     }
                     match &caps[1] {
@@ -140,9 +138,10 @@ impl Generator {
                         "n" | "N" => gender = Gender::Neutral,
                         _ => bail!("invalid gender {} for symbol '{}' in expression '{}'",
                                    &caps[1],
-                                   r.symbol,
+                                   symbol,
                                    s),
                     }
+                    println!("set gender for {} : {:?}", symbol, gender);
                 }
             }
             
@@ -150,19 +149,21 @@ impl Generator {
             
             // Replace {symbols} with replacements
             let result = RE.replace_all(s.as_ref(), |caps: &Captures| {
-                match replaced.get(&caps[1]) {
-                    Some(replaced) => replaced.content.clone(),
-                    None => String::new(),
-                }
+                self.instantiate_util(&caps[1], replaced, rng).unwrap()
             });
             
 
             // Gender adaptation, if needed
             // Find the gender to replace
             let gender_adapt = if let Some(key) = &r.gender_dependency {
+                if !replaced.contains_key(key.as_str()) {
+                    self.instantiate_util(key, replaced, rng)?;
+                }
                 match replaced.get(key.as_str()) {
                     Some(replaced) => replaced.gender,
-                    None => Gender::Neutral
+                    None => bail!("Symbol {} needs a gender to be specified by {} but it doesn't specify one",
+                                  symbol,
+                                  key),
                 }
             } else {
                 Gender::Neutral
@@ -175,16 +176,28 @@ impl Generator {
                 }
             });
 
-            replaced.insert(r.symbol.clone(),
+            replaced.insert(symbol.to_string(),
                             Replaced {
                                 gender: gender,
                                 content: result.to_string()});
+        } else {
+            bail!("could not find symbol {} in generator", symbol);
         }
 
         match replaced.get(symbol) {
             Some(replaced) => Ok(replaced.content.clone()),
             None => bail!("could not find symbol {} in generator", symbol)
         }
+
+    }
+
+    /// Instantiate a replacement symbol
+    pub fn instantiate(&self, symbol: &str) -> Result<String> {
+        let mut replaced = self.replaced.clone();
+
+        let mut rng = thread_rng();
+
+        self.instantiate_util(symbol, &mut replaced, &mut rng)
     }
 }
 

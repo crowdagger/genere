@@ -33,6 +33,7 @@
 
 mod errors;
 mod generator;
+mod graph;
 
 pub use generator::Generator;
 pub use generator::Gender;
