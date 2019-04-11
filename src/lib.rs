@@ -17,7 +17,19 @@
 //! assert!(&result == "John. He is a wizard."
 //!        || &result == "Joan. She is a witch.");
 //! ```
-
+//!
+//!
+//! # More information
+//!
+//! Genere is inspired by [Tracery](http://tracery.io/), but seeks to allow easy generation
+//! of sentences that are grammaticaly gender accurate.
+//!
+//! # TODO
+//!
+//! * Symbols must be declared in the order they will be used.
+//! * Support for JSON.
+//! * Support for "content·e" variants.
+//!
 
 mod errors;
 mod generator;
