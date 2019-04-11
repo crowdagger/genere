@@ -1,5 +1,5 @@
 [package]
-name = "genderly"
+name = "genere"
 version = "0.0.1"
 authors = ["Élisabeth Henry <liz.henry@ouvaton.org>"]
 description = "A library for randomization of text respecting grammatical gender of sentences"
