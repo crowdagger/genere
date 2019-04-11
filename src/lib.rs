@@ -49,21 +49,18 @@
 //! You can set a gender to these values using the `[m]`, `[f]` or `[n]`. Similarly, you can
 //! tell genere that a symbol depends on another's symbol gender by using `[symbol]` in the symbol name.
 //!
-//! E.g., "main[hero]" means that the gender in `main`'s replacement strings will be determined
+//! E.g., `main[hero]` means that the gender in `main`'s replacement strings will be determined
 //! by `hero`'s gender.
 //!
 //! `main`'s replacement strings can then use Male/Female syntax (e.g. `He/She`) and the appropriate
 //! version will be picked up depending on `hero`'s gender.
 //!
 //! It is also possible to specify a neutral gender, by using `[n]` in the definition and by
-//! adding a `/` in the replacement string (e.g. `He/She/They`). If it isn't specify in the
+//! adding a `/` in the replacement string (e.g. `He/She/They`). If it isn't specified in the
 //! replacement string, both male and female version will be outputted (e.g. `He/She` instead of `Them`).
-//! 
 //!
-//! # TODO
-//!
-//! * Support for "content·e" variants.
-//!
+//! It is also possible to use the "median point" syntax used in french: "Il/elle est content·e car c'est un·e sorci·er·ère."
+
 
 mod errors;
 mod generator;
