@@ -12,13 +12,13 @@ use rand::prelude::*;
 use error_chain::bail;
 
 #[derive(Debug, Clone, Copy)]
-enum Gender {
+pub enum Gender {
     Male,
     Female,
     Neutral,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Replaced {
     pub content: String,
     pub gender: Gender,
@@ -32,6 +32,7 @@ struct Replacement {
 }
 
 pub struct Generator {
+    replaced: HashMap<String, Replaced>,
     replacements: Vec<Replacement>,
 }
 
@@ -39,6 +40,7 @@ impl Generator {
     pub fn new() -> Self {
         Generator {
             replacements: vec![],
+            replaced: HashMap::new(),
         }
     }
 
@@ -76,6 +78,15 @@ impl Generator {
         Ok(())
     }
 
+    /// Sets a symbol to a gender
+    pub fn set_gender(&mut self, symbol: &str, gender: Gender) {
+        self.replaced.insert(symbol.into(), Replaced {
+            gender: gender,
+            content: String::new()
+        });
+    }
+        
+
     /// Instantiate a replacement symbol
     pub fn instantiate(&self, symbol: &str) -> Result<String> {
         lazy_static! {
@@ -84,7 +95,7 @@ impl Generator {
             static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
         }
         
-        let mut replaced: HashMap<&str, Replaced> = HashMap::new();
+        let mut replaced = self.replaced.clone();
 
         let mut rng = thread_rng();
         for r in &self.replacements {
@@ -123,13 +134,13 @@ impl Generator {
             });
             //          }
             
-            replaced.insert(&r.symbol,
+            replaced.insert(r.symbol.clone(),
                             Replaced {
                                 gender: Gender::Neutral,
                                 content: result.to_string()});
         }
 
-        match replaced.get(&symbol) {
+        match replaced.get(symbol) {
             Some(replaced) => Ok(replaced.content.clone()),
             None => bail!("could not find symbol {} in generator", symbol)
         }
@@ -164,3 +175,4 @@ fn replacement_2() {
     gen.add("baz", &["{foo} {bar}"]).unwrap();
     assert_eq!(gen.instantiate("baz").unwrap(), String::from("hello world"));
 }
+
