@@ -8,7 +8,7 @@ use std::collections::HashMap;
 fn main() {
     let json = r#"
 {
-   "hero[main]": ["John[m]", "Joan[f]"],
+   "hero": ["John[m]", "Joan[f]"],
    "job[hero]": ["wizard/witch"],
    "main[hero]": ["{hero}. He/She is a {job}."]
 }"#;

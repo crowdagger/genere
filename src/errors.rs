@@ -3,6 +3,7 @@
 // this file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #![allow(missing_docs)]
+#![allow(deprecated)]
 use error_chain::*;
 
 error_chain! {

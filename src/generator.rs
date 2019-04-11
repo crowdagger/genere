@@ -147,7 +147,6 @@ impl Generator {
                                    symbol,
                                    s),
                     }
-                    println!("set gender for {} : {:?}", symbol, gender);
                 }
             }
             
