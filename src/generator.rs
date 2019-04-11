@@ -66,7 +66,7 @@ impl Generator {
 
     fn add_move(&mut self, symbol: String, content: Vec<String>) -> Result<()> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"(.*)\[(\S*)\]").unwrap();
+            static ref RE: Regex = Regex::new(r"(.*)\[(\w*)\]").unwrap();
         }
         
 
@@ -106,10 +106,10 @@ impl Generator {
                         stack: &mut HashSet<String>) -> Result<String> {
 
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\{(\S*)\}").unwrap();
+            static ref RE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
             static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
-            static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\S*)\]").unwrap();
-            static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
+            static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\w*)\]").unwrap();
+            static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?").unwrap();
         }
 
         if stack.contains(symbol) {
@@ -174,10 +174,17 @@ impl Generator {
                 Gender::Neutral
             };
             let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
+                println!("{:?}", caps);
                 match gender_adapt {
                     Gender::Male => format!("{}", &caps[1]),
                     Gender::Female => format!("{}", &caps[2]),
-                    Gender::Neutral => format!("{} / {}", &caps[1],&caps[2])
+                    Gender::Neutral => {
+                        if caps.len() == 4 {
+                            format!("{}", &caps[3])
+                        } else {
+                            format!("{}/{}", &caps[1],&caps[2])
+                        }
+                    }
                 }
             });
 

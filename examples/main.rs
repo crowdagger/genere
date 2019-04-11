@@ -3,9 +3,9 @@ use genere::Generator;
 fn main() {
     let json = r#"
 {
-   "hero": ["John[m]", "Joan[f]"],
-   "job[hero]": ["wizard/witch"],
-   "main[hero]": ["{hero}. He/She is a {job}."]
+   "hero": ["John[m]", "Joan[f]", "Jon[n]"],
+   "job[hero]": ["wizard/witch/sorcerer"],
+   "main[hero]": ["{hero}. He/She/They is a {job}."]
 }"#;
         
     let mut gen = Generator::new();
