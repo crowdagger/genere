@@ -225,7 +225,7 @@ fn add_json() {
 
 #[test]
 fn missing_symbol() {
-    let mut gen = Generator::new();
+    let gen = Generator::new();
     assert!(gen.instantiate("foo").is_err());
 }
 
@@ -276,3 +276,16 @@ fn cyclic() {
     gen.add_json(json).unwrap();
     assert!(gen.instantiate("a").is_err());
 }
+
+#[test]
+fn unexisting() {
+    let mut gen = Generator::new();
+    let json = r#"
+{
+   "a[b]": ["Foo"],
+   "b[c]": ["Bar"]
+}"#;
+    gen.add_json(json).unwrap();
+    assert!(gen.instantiate("a").is_err());
+}
+
