@@ -80,6 +80,8 @@ impl Generator {
     pub fn instantiate(&self, symbol: &str) -> Result<String> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\{(\S*)\}").unwrap();
+            static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
+            static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
         }
         
         let mut replaced: HashMap<&str, Replaced> = HashMap::new();
@@ -100,6 +102,26 @@ impl Generator {
                     None => String::new(),
                 }
             });
+
+            // Gender adaptation, if needed
+//            if RE_GENDER.is_match(&result) {
+            let gender = if let Some(key) = &r.gender_dependency {
+                match replaced.get(key.as_str()) {
+                    Some(replaced) => replaced.gender,
+                    None => Gender::Neutral
+                }
+            } else {
+                Gender::Neutral
+            };
+            println!("!");
+            let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
+                match gender {
+                    Gender::Male => format!("{}", &caps[1]),
+                    Gender::Female => format!("{}", &caps[2]),
+                    Gender::Neutral => format!("{} / {}", &caps[1],&caps[2])
+                }
+            });
+            //          }
             
             replaced.insert(&r.symbol,
                             Replaced {
