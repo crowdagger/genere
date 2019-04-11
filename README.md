@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/lise-henry/genere.svg?branch=master)](https://travis-ci.org/lise-henry/genere)
+
 # genere
 
 Genere is a library to generate (possibly randomized) text with options to match the (grammatical) gender
@@ -58,3 +60,11 @@ adding a `/` in the replacement string (e.g. `He/She/They`). If it isn't specifi
 replacement string, both male and female version will be outputted (e.g. `He/She` instead of `Them`).
 
 It is also possible to use the "median point" syntax used in french: "Il/elle est content·e car c'est un·e sorci·er·ère."
+
+### License
+
+Genere is published under the Mozilla Public License, version 2.0. For more information, see the [License](LICENSE).
+
+### ChangeLog
+
+See [ChangeLog](ChangeLog.md).
