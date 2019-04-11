@@ -4,7 +4,7 @@
 
 use crate::errors::Result;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use regex::{Regex, Captures};
 use lazy_static::lazy_static;
@@ -102,7 +102,8 @@ impl Generator {
 
 
     fn instantiate_util(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
-                        rng: &mut ThreadRng) -> Result<String> {
+                        rng: &mut ThreadRng,
+                        stack: &mut HashSet<String>) -> Result<String> {
 
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\{(\S*)\}").unwrap();
@@ -110,6 +111,11 @@ impl Generator {
             static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\S*)\]").unwrap();
             static ref RE_SLASHES: Regex = Regex::new(r"(\S*)/(\S*)").unwrap();
         }
+
+        if stack.contains(symbol) {
+            bail!("Can not instantiate, there is cyclic dependency: '{}' depends on itself!", symbol)
+        }
+        stack.insert(symbol.to_string());
 
 
         if let Some(r) = self.replacements.get(symbol) {
@@ -149,7 +155,7 @@ impl Generator {
             
             // Replace {symbols} with replacements
             let result = RE.replace_all(s.as_ref(), |caps: &Captures| {
-                self.instantiate_util(&caps[1], replaced, rng).unwrap()
+                self.instantiate_util(&caps[1], replaced, rng, stack).unwrap()
             });
             
 
@@ -157,7 +163,7 @@ impl Generator {
             // Find the gender to replace
             let gender_adapt = if let Some(key) = &r.gender_dependency {
                 if !replaced.contains_key(key.as_str()) {
-                    self.instantiate_util(key, replaced, rng)?;
+                    self.instantiate_util(key, replaced, rng, stack)?;
                 }
                 match replaced.get(key.as_str()) {
                     Some(replaced) => replaced.gender,
@@ -184,9 +190,11 @@ impl Generator {
             bail!("could not find symbol {} in generator", symbol);
         }
 
+        stack.remove(symbol);
+        
         match replaced.get(symbol) {
             Some(replaced) => Ok(replaced.content.clone()),
-            None => bail!("could not find symbol {} in generator", symbol)
+            None => unreachable!{},
         }
 
     }
@@ -194,10 +202,10 @@ impl Generator {
     /// Instantiate a replacement symbol
     pub fn instantiate(&self, symbol: &str) -> Result<String> {
         let mut replaced = self.replaced.clone();
-
         let mut rng = thread_rng();
+        let mut set = HashSet::new();
 
-        self.instantiate_util(symbol, &mut replaced, &mut rng)
+        self.instantiate_util(symbol, &mut replaced, &mut rng, &mut set)
     }
 }
 
@@ -258,3 +266,14 @@ fn gender_2() {
     assert_eq!(&gen.instantiate("foo").unwrap(), "He is happy");
 }
 
+#[test]
+fn cyclic() {
+    let mut gen = Generator::new();
+    let json = r#"
+{
+   "a[b]": ["Foo"],
+   "b[a]": ["Bar"]
+}"#;
+    gen.add_json(json).unwrap();
+    assert!(gen.instantiate("a").is_err());
+}
