@@ -100,6 +100,19 @@ impl Generator {
         });
     }
 
+    fn get_gender(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
+                   rng: &mut ThreadRng,
+                   stack: &mut HashSet<String>) -> Result<Gender> { 
+        if !replaced.contains_key(symbol) {
+            self.instantiate_util(symbol, replaced, rng, stack)?;
+        }
+        match replaced.get(symbol) {
+            Some(replaced) => Ok(replaced.gender),
+            None => bail!("Some symbol needs a gender to be specified by {} but it doesn't specify one",
+                                  symbol),
+        }
+    }
+                  
 
     fn instantiate_util(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
                         rng: &mut ThreadRng,
@@ -107,10 +120,14 @@ impl Generator {
 
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
-            static ref RE_GENDER: Regex = Regex::new(r"[/.]").unwrap();
-            static ref RE_SET_GENDER: Regex = Regex::new(r"\[(\w*)\]").unwrap();
-            static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?").unwrap();
-            static ref RE_DOTS: Regex = Regex::new(r"(\w+)·(\w*)(?:·(\w*))?(?:·(\w*))?").unwrap();
+            static ref RE_SET_GENDER: Regex = Regex::new(r"\[([mfn])\]").unwrap();
+            static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?(?:\[(\w+)\])?").unwrap();
+            static ref RE_DOTS: Regex = Regex::new(r"(\w+)·(\w*)(?:·(\w*))?(?:·(\w*))?(?:\[(\w+)\])?").unwrap();
+        }
+
+        // If symbol has already been instantiated, early return
+        if let Some(r) = replaced.get(symbol) {
+            return Ok(r.content.clone());
         }
 
         if stack.contains(symbol) {
@@ -130,12 +147,14 @@ impl Generator {
             };
 
             // Set the gender of the symbol, if needed
+            // If not [m] [f] or [n] it is a dependency, not a gender set
             {
                 let mut i = 0;
                 for caps in RE_SET_GENDER.captures_iter(s) {
+                    println!("{:?}", caps);
                     i += 1;
                     if i > 1 {
-                        bail!("multiple genders for symbol '{}' in expression '{}'",
+                        bail!("Multiple genders for symbol '{}' in expression '{}'",
                               symbol,
                               s);
                     }
@@ -143,10 +162,7 @@ impl Generator {
                         "m" | "M" => gender = Gender::Male,
                         "f" | "F" => gender = Gender::Female,
                         "n" | "N" => gender = Gender::Neutral,
-                        _ => bail!("invalid gender {} for symbol '{}' in expression '{}'",
-                                   &caps[1],
-                                   symbol,
-                                   s),
+                        _ => unreachable!{},
                     }
                 }
             }
@@ -161,22 +177,16 @@ impl Generator {
 
             // Gender adaptation, if needed
             // Find the gender to replace
-            let gender_adapt = if let Some(key) = &r.gender_dependency {
-                if !replaced.contains_key(key.as_str()) {
-                    self.instantiate_util(key, replaced, rng, stack)?;
-                }
-                match replaced.get(key.as_str()) {
-                    Some(replaced) => replaced.gender,
-                    None => bail!("Symbol {} needs a gender to be specified by {} but it doesn't specify one",
-                                  symbol,
-                                  key),
-                }
+            let dependency = r.gender_dependency.as_ref();
+            let gender_adapt = if let Some(key) = dependency {
+                self.get_gender(key, replaced, rng, stack)?
             } else {
                 Gender::Neutral
             };
 
             // Replacement of the form "content·e" (used in french)
             let result = RE_DOTS.replace_all(&result, |caps: &Captures| {
+                println!("{:?}", caps);
                 let mut len = 3;
                 if caps.get(3).is_some() {
                     len += 1;
@@ -184,7 +194,12 @@ impl Generator {
                 if caps.get(4).is_some() {
                     len += 1;
                 }
-                match gender_adapt {
+                let gender = if caps.get(5).is_some() {
+                    self.get_gender(&caps[5], replaced, rng, stack).unwrap()
+                } else {
+                    gender_adapt
+                };
+                match gender {
                     Gender::Male => match len {
                         3 => format!("{}", &caps[1]),
                         4 => format!("{}{}", &caps[1], &caps[2]),
@@ -217,7 +232,14 @@ impl Generator {
 
             // Replacement of the form Male/Female[/Neutral]
             let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
-                  match gender_adapt {
+                println!("{:?}", caps);
+                let gender = if caps.get(4).is_some() {
+                    self.get_gender(&caps[4], replaced, rng, stack).unwrap()
+                } else {
+                    gender_adapt
+                };
+                
+                match gender {
                     Gender::Male => format!("{}", &caps[1]),
                     Gender::Female => format!("{}", &caps[2]),
                       Gender::Neutral => if caps.get(3).is_some() {
@@ -310,6 +332,14 @@ fn gender_2() {
     let mut gen = Generator::new();
     gen.add("plop", &["Joe[m]"]).unwrap();
     gen.add("foo[plop]", &["He/She is happy"]).unwrap();
+    assert_eq!(&gen.instantiate("foo").unwrap(), "He is happy");
+}
+
+#[test]
+fn gender_3() {
+    let mut gen = Generator::new();
+    gen.add("plop", &["Joe[m]"]).unwrap();
+    gen.add("foo", &["He/She[plop] is happy"]).unwrap();
     assert_eq!(&gen.instantiate("foo").unwrap(), "He is happy");
 }
 

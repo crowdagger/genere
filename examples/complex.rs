@@ -6,8 +6,8 @@ fn main() {
     "hero": ["John[m]", "Olivia[f]", "Gail[n]"],
     "job[hero]": ["sorci·er·ère", "guerri·er·ère"],
     "arme": ["hache[f]", "épée[f]", "gourdin[m]"],
-    "fullarme[arme]": ["un·e {arme} tranchant·e", "un·e {arme} imposant·e", "un·e gros·se {arme}"],
-    "main[hero]": ["Il/Elle/Iel s'appelle {hero}. C'est un·e {job}. Il/Elle/Iel a {fullarme}"]
+    "adjectif[arme]": ["tranchant·e", "imposant·e", "étincelant·e"],
+    "main[hero]": ["Il/Elle/Iel s'appelle {hero}. C'est un·e {job}. Il/Elle/Iel a un·e[arme] {arme} {adjectif}"]
 }"#;
         
     let mut gen = Generator::new();

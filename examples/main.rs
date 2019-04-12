@@ -4,8 +4,8 @@ fn main() {
     let json = r#"
 {
    "hero": ["John[m]", "Joan[f]", "Jon[n]"],
-   "job[hero]": ["sorci·er·ère"],
-   "main[hero]": ["{hero}. Il/Elle/Iel est un·e {job}."]
+   "job": ["sorci·er·ère[hero]"],
+   "main": ["{hero}. Il/Elle[hero] est un·e[hero] {job}."]
 }"#;
         
     let mut gen = Generator::new();
