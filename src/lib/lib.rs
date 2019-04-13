@@ -80,6 +80,12 @@
 //!
 //! it is guarenteed that both replacements for `{name}` will be identical.
 //!
+//! If you want to get a (possibly) different instantiation, you need to use `{{symbol}}`:
+//!
+//! ```json
+//! "text": ["Meet {name} {last_name}. {name} is a proud {class}. There is also {{name}}, a {{class}}."]
+//! ```
+//!
 //! ## Gender adaptation
 //!
 //! Genere seeks to allow easy generation of sentences that are grammaticaly gender accurate:

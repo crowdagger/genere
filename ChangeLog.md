@@ -1,6 +1,9 @@
 ChangeLog
 ===========
 
+## unreleased:
+* Add `{{symbol}}` to get a new replacement for a symbol.
+
 ## 0.1.0 (2019-04-13):
 * Add support for JSON.
 * Remove constraint on the order to add clauses.
