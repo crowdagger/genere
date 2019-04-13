@@ -5,6 +5,7 @@
 use crate::errors::Result;
 
 use std::collections::{HashMap, HashSet};
+use std::borrow::Cow;
 
 use regex::{Regex, Captures};
 use lazy_static::lazy_static;
@@ -43,6 +44,60 @@ impl Generator {
         }
     }
 
+    /// Preprocess a string to replaced escaped characters that characters that won't
+    /// interfere with genere's regexes.
+    pub fn pre_process(s: String) -> String {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"\\(.)").unwrap();
+        }
+
+        if RE.is_match(&s) {
+            let new_s = RE.replace_all(&s, |caps: &Captures| {
+                println!("{:?}", caps);
+                match &caps[1] {
+                    r"\" => Cow::Borrowed(r"\<backslash>"),
+                    r"[" => Cow::Borrowed(r"\<leftsquare>"),
+                    r"]" => Cow::Borrowed(r"\<rightsquare>"),
+                    r"{" => Cow::Borrowed(r"\<leftcurly>"),
+                    r"}" => Cow::Borrowed(r"\<rightcurly>"),
+                    r"/" => Cow::Borrowed(r"\<slash>"),
+                    r"·" => Cow::Borrowed(r"\<median>"),
+                    n => Cow::Owned(format!("{}", n)),
+                }
+            });
+            new_s.into_owned()
+        } else {
+            s
+        }
+    }
+
+    /// Prost-process a string to replace escape characters with expected ones
+    pub fn post_process(s: String) -> String {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"\\<(\w+)>").unwrap();
+        }
+
+        if RE.is_match(&s) {
+            let new_s = RE.replace_all(&s, |caps: &Captures| {
+                println!("{:?}", caps);
+                match &caps[1] {
+                    "backslash" => r"\",
+                    "leftsquare" => r"[",
+                    "rightsquare" => r"]",
+                    "leftcurly" => r"{",
+                    "rightcurly" => r"}",
+                    "slash" => "/",
+                    "median" => "·",
+                    _ => unreachable!(),                        
+                }
+            });
+            new_s.into_owned()
+        } else {
+            s
+        }
+    }
+
+    
     /// Adds a replacement grammar using JSON format.
     pub fn add_json(&mut self, json: &str) -> Result<()> {
         let map: HashMap<String, Vec<String>> = serde_json::from_str(json)?;
@@ -64,11 +119,16 @@ impl Generator {
         self.add_move(symbol, c)
     }
 
-    fn add_move(&mut self, symbol: String, content: Vec<String>) -> Result<()> {
+    fn add_move(&mut self, mut symbol: String, mut content: Vec<String>) -> Result<()> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.*)\[(\w*)\]").unwrap();
         }
-        
+
+        symbol = Self::pre_process(symbol);
+        for i in 0..content.len() {
+            let c = std::mem::replace(&mut content[i], String::new());
+            content[i] = Self::pre_process(c);
+        }
 
       
         let cap = RE.captures(&symbol);
@@ -274,7 +334,8 @@ impl Generator {
         let mut rng = thread_rng();
         let mut set = HashSet::new();
 
-        self.instantiate_util(symbol, &mut replaced, &mut rng, &mut set)
+        let final_s = self.instantiate_util(symbol, &mut replaced, &mut rng, &mut set)?;
+        Ok(Self::post_process(final_s))
     }
 }
 
@@ -367,3 +428,54 @@ fn unexisting() {
     assert!(gen.instantiate("a").is_err());
 }
 
+#[test]
+fn pre_process() {
+    let s = Generator::pre_process(r"foobarbaz".to_string());
+    assert_eq!(&s, "foobarbaz");
+
+    let s = Generator::pre_process(r"\foobarbaz".to_string());
+    assert_eq!(&s, "foobarbaz");
+
+    let s = Generator::pre_process(r"\\foobarbaz".to_string());
+    assert_eq!(&s, r"\<backslash>foobarbaz");
+
+    let s = Generator::pre_process(r"\[foobarbaz\]".to_string());
+    assert_eq!(&s, r"\<leftsquare>foobarbaz\<rightsquare>");
+    
+    let s = Generator::pre_process(r"\{foobarbaz\}".to_string());
+    assert_eq!(&s, r"\<leftcurly>foobarbaz\<rightcurly>");
+
+    let s = Generator::pre_process(r"foo/bar/baz".to_string());
+    assert_eq!(&s, r"foo/bar/baz");
+    
+    let s = Generator::pre_process(r"foo\/bar\/baz".to_string());
+    assert_eq!(&s, r"foo\<slash>bar\<slash>baz");
+
+    let s = Generator::pre_process(r"foo\·bar\·baz".to_string());
+    assert_eq!(&s, r"foo\<median>bar\<median>baz");
+}
+
+#[test]
+fn post_process() {
+    let s = String::from("No characters to replace here");
+    let new_s = Generator::post_process(Generator::pre_process(s.clone()));
+    assert_eq!(s, new_s);
+
+    let s = String::from(r"\[Characters\] \{to\} replace here\/and there\\");
+    let new_s = Generator::post_process(Generator::pre_process(s));
+    assert_eq!(&new_s, r"[Characters] {to} replace here/and there\");
+}
+
+#[test]
+fn a_bit_all() {
+    let json = r#"
+{
+   "object": ["\\[lame\\][f]"],
+   "main": ["\\{Vous\\} avez un·e[object] {object}"]
+}
+"#;
+    let mut gen = Generator::new();
+    gen.add_json(json).unwrap();
+    let s = gen.instantiate("main").unwrap();
+    assert_eq!(&s, r"{Vous} avez une [lame]");
+}
