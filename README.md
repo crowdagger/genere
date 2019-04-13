@@ -114,6 +114,12 @@ For each gender variation, it is possible to specify a "dependency":
 Here, the gender of `hero` will be used to determine between `He/She` and `His/Her`, but
 the gender of `child` will be used to pick between `son/daughter`.
 
+#### Spaces in gender adaptation
+
+When you use this gender syntax, the '/' will only consider the word before and the word
+after, not allowing to have spaces in your expressions. If you want to insert a space in a
+gender adaptation expression, you must escape it with `~`, e.g.: "du/de~ la"
+
 ### Additional gender syntax
 
 It is also possible to use the "median point" syntax used e.g. in french: "C'est un·e sorci·er·ère." is equivalent to "C'est un/une sorcier/sorcière".
