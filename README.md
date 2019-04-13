@@ -9,20 +9,6 @@ of various elements.
 
 ```rust
 use genere::Generator;
-let mut gen = Generator::new();
-gen.add("hero", &["John[m]", "Joan[f]"]).unwrap();
-gen.add("job[hero]", &["wizard/witch"]).unwrap();
-gen.add("main[hero]", &["{hero}. He/She is a {job}."]).unwrap();
-let result = gen.instantiate("main").unwrap();
-assert!(&result == "John. He is a wizard."
-       || &result == "Joan. She is a witch.");
-```
-
-
-## Same example, using JSON
-
-```rust
-use genere::Generator;
 let json = r#"
 {
    "hero": ["John[m]", "Joan[f]"],
@@ -38,28 +24,83 @@ assert!(&result == "John. He is a wizard."
 ```
 
 
-## More information
+## Features
 
-Genere is inspired by [Tracery](http://tracery.io/), but seeks to allow easy generation
-of sentences that are grammaticaly gender accurate.
+### Text generation
+
+Genere is inspired by [Tracery](http://tracery.io/) and thus has a similar syntax to allow
+you to easily generate randonized text:
+
+```rust
+use genere::Generator;
+let json = r#"
+{
+    "name": ["John", "Johana", "Vivienne", "Eric"],
+    "last_name": ["StrongArm", "Slayer", "The Red"],
+    "class": ["mage", "warrior", "thief", "rogue", "barbarian"],
+    "race": ["human", "dwarvish", "elvish", "vampire"],
+    "text": ["{name} {last_name} is a {race} {class}.",
+	     "Meet {name} {last_name}, A proud {class}!"]
+}
+"#;
+
+let mut gen = Generator::new();
+gen.add_json(json).unwrap();;
+let result = gen.instantiate("text").unwrap();
+println!("{}", result);
+```
+
+might display "Johana  Slayer is a vampire warrior."
 
 Basically, you define a list of symbols which will be replaced (randomly) by one version
-of the string in the corresponding array.
+of the string in the corresponding array when you "call" them using the `{symbol`} syntax.
+
+### Gender adaptation
+
+Genere seeks to allow easy generation of sentences that are grammaticaly gender accurate:
+
+```rust
+use genere::Generator;
+let json = r#"
+{
+    "name": ["John[m]", "Johana[f]", "Vivienne[f]", "Eric[m]"],
+    "class": ["mage", "warrior", "thief", "rogue", "barbarian"],
+    "text[name]": ["Meet {name}. He/She is a proud {class}!"]
+}
+"#;
+
+let mut gen = Generator::new();
+gen.add_json(json).unwrap();;
+let result = gen.instantiate("text").unwrap();
+println!("{}", result);
+```
+
+will make sure to display "He" or She" according to the gender specified in the symbol `name`.
 
 You can set a gender to these values using the `[m]`, `[f]` or `[n]`. Similarly, you can
-tell genere that a symbol depends on another's symbol gender by using `[symbol]` in the symbol name.
-
-E.g., `main[hero]` means that the gender in `main`'s replacement strings will be determined
-by `hero`'s gender.
-
-`main`'s replacement strings can then use Male/Female syntax (e.g. `He/She`) and the appropriate
-version will be picked up depending on `hero`'s gender.
-
+tell genere that a symbol depends on another's symbol gender by using `[symbol]` in the symbol name. E.g., `text[main]` means that the gender in `main`'s replacement strings will be determined by `name`'s gender.
 It is also possible to specify a neutral gender, by using `[n]` in the definition and by
 adding a `/` in the replacement string (e.g. `He/She/They`). If it isn't specified in the
 replacement string, both male and female version will be outputted (e.g. `He/She` instead of `Them`).
 
-It is also possible to use the "median point" syntax used in french: "Il/elle est content·e car c'est un·e sorci·er·ère."
+Sometimes a sentence might use various gendered elements and not just depend on only one symbol's gender.
+For each gender variation, it is possible to specify a "dependency":
+
+```json
+"text"[hero]: ["He/She is called {hero}. His/Her son/daughter[child] is named {child}."]
+```
+
+Here, the gender of `hero` will be used to determine between `He/She` and `His/Her`, but
+the gender of `child` will be used to pick between `son/daughter`.
+
+### Additional gender syntax
+
+It is also possible to use the "median point" syntax used e.g. in french: "C'est un·e sorci·er·ère." is equivalent to "C'est un/une sorcier/sorcière".
+
+### Escaping
+
+If you want to use the '[', ']', '{', '}', '/' and '·' characters in your text, you can use
+the escape character '~'. E.g., "~{foo}" will display "{foo}" instead of trying to find the symbol `foo` and replace it with its content. You can also use "~~" if you want to display the tilde symbol.
 
 ### License
 
