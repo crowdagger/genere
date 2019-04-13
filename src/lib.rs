@@ -88,7 +88,7 @@
 //! For each gender variation, it is possible to specify a "dependency":
 //!
 //! ```json
-//! "text"[hero]: ["He/She is called {hero}. His/Her son/daughter[child] is named {child}."]
+//! "text[hero]": ["He/She is called {hero}. His/Her son/daughter[child] is named {child}."]
 //! ```
 //!
 //! Here, the gender of `hero` will be used to determine between `He/She` and `His/Her`, but
