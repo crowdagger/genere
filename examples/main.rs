@@ -1,12 +1,6 @@
 use genere::Generator;
 
 fn main() {
-    let s = Generator::pre_process(r"foo\{bar\}\[baz\]".to_string());
-    println!("preprocess done: {}", s);
-
-    let s = Generator::post_process(s);
-    println!("postprocess done: {}", s);
-    
     let json = r#"
 {
    "hero": ["John[m]", "Joan[f]", "Jon[n]"],

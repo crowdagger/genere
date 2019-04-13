@@ -53,7 +53,6 @@ impl Generator {
 
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
-                println!("{:?}", caps);
                 match &caps[1] {
                     r"\" => Cow::Borrowed(r"\<backslash>"),
                     r"[" => Cow::Borrowed(r"\<leftsquare>"),
@@ -79,7 +78,6 @@ impl Generator {
 
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
-                println!("{:?}", caps);
                 match &caps[1] {
                     "backslash" => r"\",
                     "leftsquare" => r"[",
@@ -211,7 +209,6 @@ impl Generator {
             {
                 let mut i = 0;
                 for caps in RE_SET_GENDER.captures_iter(s) {
-                    println!("{:?}", caps);
                     i += 1;
                     if i > 1 {
                         bail!("Multiple genders for symbol '{}' in expression '{}'",
@@ -246,7 +243,6 @@ impl Generator {
 
             // Replacement of the form "content·e" (used in french)
             let result = RE_DOTS.replace_all(&result, |caps: &Captures| {
-                println!("{:?}", caps);
                 let mut len = 3;
                 if caps.get(3).is_some() {
                     len += 1;
@@ -292,7 +288,6 @@ impl Generator {
 
             // Replacement of the form Male/Female[/Neutral]
             let result = RE_SLASHES.replace_all(&result, |caps: &Captures| {
-                println!("{:?}", caps);
                 let gender = if caps.get(4).is_some() {
                     self.get_gender(&caps[4], replaced, rng, stack).unwrap()
                 } else {
