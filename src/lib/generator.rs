@@ -170,14 +170,25 @@ impl Generator {
                                   symbol),
         }
     }
-                  
 
+
+
+    /// "forget" all state and instantiate a symbol
+    fn reinstantiate(&self, symbol: &str, rng: &mut ThreadRng) -> Result<String> {
+        let mut replaced = self.replaced.clone();
+        let mut stack = HashSet::new();
+
+        self.instantiate_util(symbol, &mut replaced, rng, &mut stack)
+    }
+    
+    /// Used to recursively instantiate each element
     fn instantiate_util(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
                         rng: &mut ThreadRng,
                         stack: &mut HashSet<String>) -> Result<String> {
 
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
+            static ref RE_REINSTANTIATE: Regex = Regex::new(r"\{\{(\w*)\}\}").unwrap();
+            static ref RE_INSTANTIATE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
             static ref RE_SET_GENDER: Regex = Regex::new(r"\[([mfn])\]").unwrap();
             static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?(?:\[(\w+)\])?").unwrap();
             static ref RE_DOTS: Regex = Regex::new(r"(\w+)·(\w*)(?:·(\w*))?(?:·(\w*))?(?:\[(\w+)\])?").unwrap();
@@ -225,9 +236,14 @@ impl Generator {
             }
             
             let s = RE_SET_GENDER.replace_all(&s, "");
+
+            // Replace {{symbols}} with replacements, forgetting the environment
+            let result = RE_REINSTANTIATE.replace_all(s.as_ref(), |caps: &Captures| {
+                self.reinstantiate(&caps[1], rng).unwrap()
+            });
             
             // Replace {symbols} with replacements
-            let result = RE.replace_all(s.as_ref(), |caps: &Captures| {
+            let result = RE_INSTANTIATE.replace_all(result.as_ref(), |caps: &Captures| {
                 self.instantiate_util(&caps[1], replaced, rng, stack).unwrap()
             });
             
