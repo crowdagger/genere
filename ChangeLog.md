@@ -1,7 +1,7 @@
 ChangeLog
 ===========
 
-## unreleased
+## 0.1.0 (2019-04-13):
 * Add support for JSON.
 * Remove constraint on the order to add clauses.
 * Add support for neutral gender.
