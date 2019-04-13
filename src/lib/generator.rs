@@ -117,7 +117,7 @@ impl Generator {
         self.add_move(symbol, c)
     }
 
-    fn add_move(&mut self, mut symbol: String, mut content: Vec<String>) -> Result<()> {
+    pub fn add_move(&mut self, mut symbol: String, mut content: Vec<String>) -> Result<()> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.*)\[(\w*)\]").unwrap();
         }

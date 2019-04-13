@@ -12,7 +12,12 @@ edition = "2018"
 
 [lib]
 name = "genere"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
+
+[[bin]]
+name = "genere"
+path = "src/bin/main.rs"
+doc = false
 
 [badges]
 travis-ci = { repository = "lise-henry/genere", branch = "master" }

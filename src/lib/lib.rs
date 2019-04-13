@@ -134,4 +134,5 @@ mod generator;
 
 pub use generator::Generator;
 pub use generator::Gender;
+pub use errors::Result;
 
