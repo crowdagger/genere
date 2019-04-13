@@ -101,7 +101,7 @@
 //! ## Escaping
 //!
 //! If you want to use the '[', ']', '{', '}', '/' and '·' characters in your text, you can use
-//! the escape character '~'. E.g., "~{foo}" will display "{foo}" instead of trying to find the symbol `foo` and replace it with its content. You can also use "~~" if you want to display the tilde symbol.
+//! the escape character '\~'. E.g., "\~{foo}" will display "{foo}" instead of trying to find the symbol `foo` and replace it with its content. You can also use "\~\ ~" if you want to display the tilde symbol.
 //!
 //! ## License
 //!
