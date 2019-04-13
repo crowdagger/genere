@@ -26,13 +26,29 @@ assert!(&result == "John. He is a wizard."
 
 ## Features
 
+### Binary or Rust library
+
+It is possible to use Genere as a binary:
+
+```bash
+$ genere main < file.json
+```
+will instantiate the `main` symbol in the `file.json` file.
+
+Genere is, however, primarily a [Rust](https://rust-lang.org) library, so it can be used in programs written in Rust: you only have to add
+
+```toml
+genere = "0.1"
+```
+
+In the `dependencies` section of your `Cargo.toml` file.
+
 ### Text generation
 
 Genere is inspired by [Tracery](http://tracery.io/) and thus has a similar syntax to allow
 you to easily generate randonized text:
 
 ```rust
-use genere::Generator;
 let json = r#"
 {
     "name": ["John", "Johana", "Vivienne", "Eric"],
@@ -44,10 +60,6 @@ let json = r#"
 }
 "#;
 
-let mut gen = Generator::new();
-gen.add_json(json).unwrap();;
-let result = gen.instantiate("text").unwrap();
-println!("{}", result);
 ```
 
 might display "Johana  Slayer is a vampire warrior."
@@ -60,7 +72,6 @@ of the string in the corresponding array when you "call" them using the `{symbol
 Genere seeks to allow easy generation of sentences that are grammaticaly gender accurate:
 
 ```rust
-use genere::Generator;
 let json = r#"
 {
     "name": ["John[m]", "Johana[f]", "Vivienne[f]", "Eric[m]"],
@@ -69,10 +80,6 @@ let json = r#"
 }
 "#;
 
-let mut gen = Generator::new();
-gen.add_json(json).unwrap();;
-let result = gen.instantiate("text").unwrap();
-println!("{}", result);
 ```
 
 will make sure to display "He" or She" according to the gender specified in the symbol `name`.
