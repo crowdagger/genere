@@ -160,8 +160,8 @@ impl Generator {
         });
     }
 
-    fn get_gender(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
-                   rng: &mut ThreadRng,
+    fn get_gender<R:Rng>(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
+                   rng: &mut R,
                    stack: &mut HashSet<String>) -> Result<Gender> { 
         if !replaced.contains_key(symbol) {
             self.instantiate_util(symbol, replaced, rng, stack)?;
@@ -176,7 +176,7 @@ impl Generator {
 
 
     /// "forget" all state and instantiate a symbol
-    fn reinstantiate(&self, symbol: &str, rng: &mut ThreadRng) -> Result<String> {
+    fn reinstantiate<R: Rng>(&self, symbol: &str, rng: &mut R) -> Result<String> {
         let mut replaced = self.replaced.clone();
         let mut stack = HashSet::new();
 
@@ -184,9 +184,9 @@ impl Generator {
     }
     
     /// Used to recursively instantiate each element
-    fn instantiate_util(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
-                        rng: &mut ThreadRng,
-                        stack: &mut HashSet<String>) -> Result<String> {
+    fn instantiate_util<R: Rng>(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
+                               rng: &mut R,
+                               stack: &mut HashSet<String>) -> Result<String> {
 
         lazy_static! {
             static ref RE_REINSTANTIATE: Regex = Regex::new(r"\{\{(\w*)\}\}").unwrap();
@@ -345,6 +345,18 @@ impl Generator {
     pub fn instantiate(&self, symbol: &str) -> Result<String> {
         let mut replaced = self.replaced.clone();
         let mut rng = thread_rng();
+        let mut set = HashSet::new();
+
+        let final_s = self.instantiate_util(symbol, &mut replaced, &mut rng, &mut set)?;
+        Ok(Self::post_process(final_s))
+    }
+
+    /// Instantiate a replacement symbol using a fixed seed.
+    ///
+    /// Useful if you want deterministic behaviour. 
+    pub fn instantiate_from_seed(&self, symbol: &str, seed: u64) -> Result<String> {
+        let mut replaced = self.replaced.clone();
+        let mut rng = SmallRng::seed_from_u64(seed);
         let mut set = HashSet::new();
 
         let final_s = self.instantiate_util(symbol, &mut replaced, &mut rng, &mut set)?;
@@ -512,4 +524,22 @@ fn a_bit_all() {
     gen.add_json(json).unwrap();
     let s = gen.instantiate("main").unwrap();
     assert_eq!(&s, r"{Vous} avez une [lame]");
+}
+
+#[test]
+fn seed() {
+    let json = r#"
+{
+    "hero": ["John[m]", "Olivia[f]", "Gail[n]", "Tom[m]", "Judi[f]"],
+    "job[hero]": ["sorci·er·ère", "guerri·er·ère", "voleu·r·se", "barbare", "archer/archère"],
+    "arme": ["hache[f]", "épée[f]", "gourdin[m]", "arc[m]", "masse[f]"],
+    "adjectif[arme]": ["tranchant·e", "imposant·e", "étincelant·e", "rouillé·e", "brutal·e"],
+    "description": ["{hero}, un·e[hero] {job} avec un·e[arme] {arme} {adjectif}"],
+    "main[hero]": ["Il/Elle/Iel s'appelle {hero}. {hero} est un·e {job}. Il/Elle/Iel a un·e[arme] {arme}. Ce·tte[arme]  {arme} est {adjectif}. Avec lui/elle se trouve {{description}} et {{description}}. {hero} les aime bien, c'est son crew."]
+}"#;
+    let mut gen = Generator::new();
+    gen.add_json(json).unwrap();
+    let r1 = gen.instantiate_from_seed("main", 42).unwrap();
+    let r2 = gen.instantiate_from_seed("main", 42).unwrap();
+    assert_eq!(r2, r1);
 }
