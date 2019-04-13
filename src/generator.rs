@@ -48,19 +48,19 @@ impl Generator {
     /// interfere with genere's regexes.
     fn pre_process(s: String) -> String {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\\(.)").unwrap();
+            static ref RE: Regex = Regex::new(r"~(.)").unwrap();
         }
 
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
                 match &caps[1] {
-                    r"\" => Cow::Borrowed(r"\<backslash>"),
-                    r"[" => Cow::Borrowed(r"\<leftsquare>"),
-                    r"]" => Cow::Borrowed(r"\<rightsquare>"),
-                    r"{" => Cow::Borrowed(r"\<leftcurly>"),
-                    r"}" => Cow::Borrowed(r"\<rightcurly>"),
-                    r"/" => Cow::Borrowed(r"\<slash>"),
-                    r"·" => Cow::Borrowed(r"\<median>"),
+                    r"~" => Cow::Borrowed(r"~<tilde>"),
+                    r"[" => Cow::Borrowed(r"~<leftsquare>"),
+                    r"]" => Cow::Borrowed(r"~<rightsquare>"),
+                    r"{" => Cow::Borrowed(r"~<leftcurly>"),
+                    r"}" => Cow::Borrowed(r"~<rightcurly>"),
+                    r"/" => Cow::Borrowed(r"~<slash>"),
+                    r"·" => Cow::Borrowed(r"~<median>"),
                     n => Cow::Owned(format!("{}", n)),
                 }
             });
@@ -73,13 +73,13 @@ impl Generator {
     /// Prost-process a string to replace escape characters with expected ones
     fn post_process(s: String) -> String {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\\<(\w+)>").unwrap();
+            static ref RE: Regex = Regex::new(r"~<(\w+)>").unwrap();
         }
 
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
                 match &caps[1] {
-                    "backslash" => r"\",
+                    "tilde" => r"~",
                     "leftsquare" => r"[",
                     "rightsquare" => r"]",
                     "leftcurly" => r"{",
@@ -334,6 +334,15 @@ impl Generator {
     }
 }
 
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//                                    TESTS
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 #[test]
 fn add_1() {
     let mut gen = Generator::new();
@@ -428,26 +437,26 @@ fn pre_process() {
     let s = Generator::pre_process(r"foobarbaz".to_string());
     assert_eq!(&s, "foobarbaz");
 
-    let s = Generator::pre_process(r"\foobarbaz".to_string());
+    let s = Generator::pre_process(r"~foobarbaz".to_string());
     assert_eq!(&s, "foobarbaz");
 
-    let s = Generator::pre_process(r"\\foobarbaz".to_string());
-    assert_eq!(&s, r"\<backslash>foobarbaz");
+    let s = Generator::pre_process(r"~~foobarbaz".to_string());
+    assert_eq!(&s, r"~<tilde>foobarbaz");
 
-    let s = Generator::pre_process(r"\[foobarbaz\]".to_string());
-    assert_eq!(&s, r"\<leftsquare>foobarbaz\<rightsquare>");
+    let s = Generator::pre_process(r"~[foobarbaz~]".to_string());
+    assert_eq!(&s, r"~<leftsquare>foobarbaz~<rightsquare>");
     
-    let s = Generator::pre_process(r"\{foobarbaz\}".to_string());
-    assert_eq!(&s, r"\<leftcurly>foobarbaz\<rightcurly>");
+    let s = Generator::pre_process(r"~{foobarbaz~}".to_string());
+    assert_eq!(&s, r"~<leftcurly>foobarbaz~<rightcurly>");
 
     let s = Generator::pre_process(r"foo/bar/baz".to_string());
     assert_eq!(&s, r"foo/bar/baz");
     
-    let s = Generator::pre_process(r"foo\/bar\/baz".to_string());
-    assert_eq!(&s, r"foo\<slash>bar\<slash>baz");
+    let s = Generator::pre_process(r"foo~/bar~/baz".to_string());
+    assert_eq!(&s, r"foo~<slash>bar~<slash>baz");
 
-    let s = Generator::pre_process(r"foo\·bar\·baz".to_string());
-    assert_eq!(&s, r"foo\<median>bar\<median>baz");
+    let s = Generator::pre_process(r"foo~·bar~·baz".to_string());
+    assert_eq!(&s, r"foo~<median>bar~<median>baz");
 }
 
 #[test]
@@ -456,17 +465,17 @@ fn post_process() {
     let new_s = Generator::post_process(Generator::pre_process(s.clone()));
     assert_eq!(s, new_s);
 
-    let s = String::from(r"\[Characters\] \{to\} replace here\/and there\\");
+    let s = String::from(r"~[Characters~] ~{to~} replace here~/and there~~");
     let new_s = Generator::post_process(Generator::pre_process(s));
-    assert_eq!(&new_s, r"[Characters] {to} replace here/and there\");
+    assert_eq!(&new_s, r"[Characters] {to} replace here/and there~");
 }
 
 #[test]
 fn a_bit_all() {
     let json = r#"
 {
-   "object": ["\\[lame\\][f]"],
-   "main": ["\\{Vous\\} avez un·e[object] {object}"]
+   "object": ["~[lame~][f]"],
+   "main": ["~{Vous~} avez un·e[object] {object}"]
 }
 "#;
     let mut gen = Generator::new();
