@@ -54,6 +54,7 @@ impl Generator {
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
                 match &caps[1] {
+                    " " => Cow::Borrowed(r"~<space>"),
                     r"~" => Cow::Borrowed(r"~<tilde>"),
                     r"[" => Cow::Borrowed(r"~<leftsquare>"),
                     r"]" => Cow::Borrowed(r"~<rightsquare>"),
@@ -79,6 +80,7 @@ impl Generator {
         if RE.is_match(&s) {
             let new_s = RE.replace_all(&s, |caps: &Captures| {
                 match &caps[1] {
+                    "space" => " ",
                     "tilde" => r"~",
                     "leftsquare" => r"[",
                     "rightsquare" => r"]",
@@ -190,8 +192,8 @@ impl Generator {
             static ref RE_REINSTANTIATE: Regex = Regex::new(r"\{\{(\w*)\}\}").unwrap();
             static ref RE_INSTANTIATE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
             static ref RE_SET_GENDER: Regex = Regex::new(r"\[([mfn])\]").unwrap();
-            static ref RE_SLASHES: Regex = Regex::new(r"(\w*)/(\w*)(?:/(\w*))?(?:\[(\w+)\])?").unwrap();
-            static ref RE_DOTS: Regex = Regex::new(r"(\w+)·(\w*)(?:·(\w*))?(?:·(\w*))?(?:\[(\w+)\])?").unwrap();
+            static ref RE_SLASHES: Regex = Regex::new(r"([\w~<>]*)/([\w~<>]*)(?:/([\w~<>]*))?(?:\[(\w+)\])?").unwrap();
+            static ref RE_DOTS: Regex = Regex::new(r"([\w~<>]+)·([\w~<>]*)(?:·([\w~<>]*))?(?:·([\w~<>]*))?(?:\[([\w~<>]+)\])?").unwrap();
         }
 
         // If symbol has already been instantiated, early return
@@ -425,6 +427,14 @@ fn gender_3() {
 }
 
 #[test]
+fn gender_4() {
+    let mut gen = Generator::new();
+    gen.add("arme", &["batte[f]"]).unwrap();
+    gen.add("foo", &["Un homme au/à~ la[arme] {arme} facile"]).unwrap();
+    assert_eq!(&gen.instantiate("foo").unwrap(), "Un homme à la batte facile");
+}
+
+#[test]
 fn cyclic() {
     let mut gen = Generator::new();
     let json = r#"
@@ -459,6 +469,10 @@ fn pre_process() {
     let s = Generator::pre_process(r"~~foobarbaz".to_string());
     assert_eq!(&s, r"~<tilde>foobarbaz");
 
+    let s = Generator::pre_process(r"foo~ bar~ baz".to_string());
+    assert_eq!(&s, r"foo~<space>bar~<space>baz");
+
+
     let s = Generator::pre_process(r"~[foobarbaz~]".to_string());
     assert_eq!(&s, r"~<leftsquare>foobarbaz~<rightsquare>");
     
@@ -481,7 +495,7 @@ fn post_process() {
     let new_s = Generator::post_process(Generator::pre_process(s.clone()));
     assert_eq!(s, new_s);
 
-    let s = String::from(r"~[Characters~] ~{to~} replace here~/and there~~");
+    let s = String::from(r"~[Characters~] ~{to~} replace~ here~/and there~~");
     let new_s = Generator::post_process(Generator::pre_process(s));
     assert_eq!(&new_s, r"[Characters] {to} replace here/and there~");
 }
