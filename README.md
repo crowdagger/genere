@@ -67,6 +67,14 @@ might display "Johana  Slayer is a vampire warrior."
 Basically, you define a list of symbols which will be replaced (randomly) by one version
 of the string in the corresponding array when you "call" them using the `{symbol`} syntax.
 
+Not that once a symbol has been "instantiated", ils value is fixed. So if you had:
+
+```json
+"text": ["Meet {name} {last_name}. {name} is a proud {class}."]
+```
+
+it is guarenteed that both replacements for `{name}` will be identical.
+
 ### Gender adaptation
 
 Genere seeks to allow easy generation of sentences that are grammaticaly gender accurate:
