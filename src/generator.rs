@@ -46,7 +46,7 @@ impl Generator {
 
     /// Preprocess a string to replaced escaped characters that characters that won't
     /// interfere with genere's regexes.
-    pub fn pre_process(s: String) -> String {
+    fn pre_process(s: String) -> String {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\\(.)").unwrap();
         }
@@ -71,7 +71,7 @@ impl Generator {
     }
 
     /// Prost-process a string to replace escape characters with expected ones
-    pub fn post_process(s: String) -> String {
+    fn post_process(s: String) -> String {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"\\<(\w+)>").unwrap();
         }
