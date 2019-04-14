@@ -1,7 +1,7 @@
 ChangeLog
 ===========
 
-## unreleased:
+## 0.1.1 (2019-04-14):
 * Add `{{symbol}}` to get a new replacement for a symbol.
 * Add new escapement '~ ' to escape spaces.
 * Add `instantiate_from_seed` to allow for deterministic result.
