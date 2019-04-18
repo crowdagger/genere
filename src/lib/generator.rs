@@ -103,14 +103,22 @@ impl Generator {
         let map: HashMap<String, Vec<String>> = serde_json::from_str(json)?;
 
         for (symbol, content) in map {
-            self.add_move(symbol, content)?;
+            self.add_move(symbol.to_lowercase(), content)?;
         }
         Ok(())
     }
 
     /// Adds a replacement grammar that will replace given symbol by one of those elements.
+    ///
+    /// # Arguments
+    ///
+    /// * `symbol`: the name that will be used to accessed the content. It is converted to
+    /// lowercase before being added to the `Generator`.
+    /// * `content`: a list of possible replacements for the symbol, that will be chosen
+    /// randomly when instantiated. Note that it can contain special marking to refer to
+    /// other symbol, gender replacements and so on.
     pub fn add(&mut self, symbol: &str, content: &[&str]) -> Result<()> {
-        let symbol: String = symbol.into();
+        let symbol: String = symbol.to_lowercase();
 
         let mut c: Vec<String> = Vec::with_capacity(content.len());
         for s in content {
@@ -182,12 +190,39 @@ impl Generator {
 
         self.instantiate_util(symbol, &mut replaced, rng, &mut stack)
     }
+
+    /// Capitalize the content according to the symbol.
+    ///
+    /// If symbol starts with an uppercase, content will start in an uppercase.
+    ///
+    /// If symbol is all uppercase, content will be all uppercase.
+    ///
+    /// If symbol is lowercase, don't touch the content.
+    fn capitalize(symbol: &str, content: &str) -> String {
+        let left  = symbol.find(char::is_uppercase);
+        match left {
+            Some(0) => {
+                match symbol.find(char::is_lowercase) {
+                    Some(_) => {
+                        let mut c = content.chars();
+                        match c.next() {
+                            None => unreachable!(),
+                            Some(f) => f.to_uppercase().collect::<String>() + c.as_str()
+                        }
+                    },
+                    None => content.to_uppercase(),
+                }
+            },
+                _ => content.to_string(),
+                
+        }
+    }
     
     /// Used to recursively instantiate each element
     fn instantiate_util<R: Rng>(&self, symbol: &str, replaced: &mut HashMap<String, Replaced>,
-                               rng: &mut R,
-                               stack: &mut HashSet<String>) -> Result<String> {
-
+                                rng: &mut R,
+                                stack: &mut HashSet<String>) -> Result<String> {
+    
         lazy_static! {
             static ref RE_REINSTANTIATE: Regex = Regex::new(r"\{\{(\w*)\}\}").unwrap();
             static ref RE_INSTANTIATE: Regex = Regex::new(r"\{(\w*)\}").unwrap();
@@ -195,19 +230,21 @@ impl Generator {
             static ref RE_SLASHES: Regex = Regex::new(r"([\w~<>]*)/([\w~<>]*)(?:/([\w~<>]*))?(?:\[(\w+)\])?").unwrap();
             static ref RE_DOTS: Regex = Regex::new(r"([\w~<>]+)·([\w~<>]*)(?:·([\w~<>]*))?(?:·([\w~<>]*))?(?:\[([\w~<>]+)\])?").unwrap();
         }
+    
+        let low_symbol = symbol.to_lowercase();
 
         // If symbol has already been instantiated, early return
-        if let Some(r) = replaced.get(symbol) {
-            return Ok(r.content.clone());
+        if let Some(r) = replaced.get(&low_symbol) {
+            return Ok(Self::capitalize(symbol, &r.content));
         }
 
-        if stack.contains(symbol) {
+        if stack.contains(&low_symbol) {
             bail!("Can not instantiate, there is cyclic dependency: '{}' depends on itself!", symbol)
         }
-        stack.insert(symbol.to_string());
+        stack.insert(low_symbol.clone());
 
 
-        if let Some(r) = self.replacements.get(symbol) {
+        if let Some(r) = self.replacements.get(&low_symbol) {
             let mut gender = Gender::Neutral;
             
             // Pick a random variant 
@@ -239,7 +276,7 @@ impl Generator {
             
             let s = RE_SET_GENDER.replace_all(&s, "");
 
-            // Replace {{symbols}} with replacements, forgetting the environment
+            // Replace {{symbols}} with replacements, forgetting the environment and reinstiating them
             let result = RE_REINSTANTIATE.replace_all(s.as_ref(), |caps: &Captures| {
                 self.reinstantiate(&caps[1], rng).unwrap()
             });
@@ -324,7 +361,7 @@ impl Generator {
             });
 
 
-            replaced.insert(symbol.to_string(),
+            replaced.insert(low_symbol.clone(),
                             Replaced {
                                 gender: gender,
                                 content: result.to_string()});
@@ -332,10 +369,10 @@ impl Generator {
             bail!("could not find symbol {} in generator", symbol);
         }
 
-        stack.remove(symbol);
+        stack.remove(&low_symbol);
         
-        match replaced.get(symbol) {
-            Some(replaced) => Ok(replaced.content.clone()),
+        match replaced.get(&low_symbol) {
+            Some(replaced) => Ok(Self::capitalize(symbol, &replaced.content)),
             None => unreachable!{},
         }
 
@@ -542,4 +579,36 @@ fn seed() {
     let r1 = gen.instantiate_from_seed("main", 42).unwrap();
     let r2 = gen.instantiate_from_seed("main", 42).unwrap();
     assert_eq!(r2, r1);
+}
+
+#[test]
+fn capitalize_1() {
+    let s = Generator::capitalize("foo", "bar");
+    assert_eq!(s, "bar");
+
+    let s = Generator::capitalize("Foo", "bar");
+    assert_eq!(s, "Bar");
+
+    let s = Generator::capitalize("FOO", "bar");
+    assert_eq!(s, "BAR");
+}
+
+#[test]
+fn capitalize_2() {
+    let mut gen = Generator::new();
+    gen.add_json(r#"
+{
+    "dog": ["a good dog"],
+    "foo": ["Zyma. {Dog}"],
+    "bar": ["Zyma is {dog}"],
+    "baz": ["Zyma is {DOG}"]
+}
+"#).unwrap();
+    let foo = gen.instantiate("foo").unwrap();
+    let bar = gen.instantiate("bar").unwrap();
+    let baz = gen.instantiate("baz").unwrap();
+
+    assert_eq!(&foo, "Zyma. A good dog");
+    assert_eq!(&bar, "Zyma is a good dog");
+    assert_eq!(&baz, "Zyma is A GOOD DOG");
 }
