@@ -73,13 +73,37 @@ Not that once a symbol has been "instantiated", ils value is fixed. So if you ha
 "text": ["Meet {name} {last_name}. {name} is a proud {class}."]
 ```
 
-it is guarenteed that both replacements for `{name}` will be identical.
+it is guaranteed that both replacements for `{name}` will be identical.
 
 If you want to get a (possibly) different instantiation, you need to use `{{symbol}}`:
 
 ```json
 "text": ["Meet {name} {last_name}. {name} is a proud {class}. There is also {{name}}, a {{class}}."]
 ```
+
+### Capitalization
+
+When declared, symbols are case-insensitive. When they are referred to in content replacements,
+the capitalization of the symbol will impact the capitalization of
+the replacement: if thhe symbol is in lowercase, the content is
+not touched; if only the first letter of the symbol is in
+uppercase, the first letter of the replacement content will be
+changed to uppercase; and if the symbol is all in uppercase, the
+same will be applied for the replacement content.
+
+```rust
+let json = r#"
+{
+    "dog": ["a good dog"],
+    "text1": ["This is {dog}"],
+    "text2": ["This is {DOG}"],
+    "text3": ["{Dog}"]
+}
+"#;
+
+```
+
+will display "This is a good dog", "This is A GOOD DOG" and "A good dog" for "text1", "text2" and "text3" respectively.
 
 ### Gender adaptation
 
