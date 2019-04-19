@@ -1,7 +1,7 @@
 ChangeLog
 ===========
 
-## unreleased
+## 0.1.2 (2019-04-19):
 * Add support for capitalization change of symbols in content replacement.
 * Add `msg` method to `Generator`.
 
