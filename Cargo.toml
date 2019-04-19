@@ -27,6 +27,9 @@ travis-ci = { repository = "lise-henry/genere", branch = "master" }
 error-chain = "0.12"
 regex = "1"
 lazy_static = "1"
-rand = "0.6"
+rand = { version = "0.6"}
 serde = "1"
 serde_json = "1"
+
+[features]
+wasm-bindgen = ["rand/wasm-bindgen"]
