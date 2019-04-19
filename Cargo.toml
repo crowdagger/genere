@@ -5,8 +5,8 @@ authors = ["Élisabeth Henry <liz.henry@ouvaton.org>"]
 description = "A library for randomization of text respecting grammatical gender of sentences"
 readme = "README.md"
 keywords = ["text"]
-repository = "https://github.com/lise-henry/genderly"
-documentation = "https://docs.rs/genderly"
+repository = "https://github.com/lise-henry/genere"
+documentation = "https://docs.rs/genere"
 license = "MPL-2.0"
 edition = "2018"
 
