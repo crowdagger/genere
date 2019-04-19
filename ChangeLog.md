@@ -3,6 +3,7 @@ ChangeLog
 
 ## unreleased
 * Add support for capitalization change of symbols in content replacement.
+* Add `msg` method to `Generator`.
 
 ## 0.1.1 (2019-04-14):
 * Add `{{symbol}}` to get a new replacement for a symbol.

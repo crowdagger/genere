@@ -12,10 +12,16 @@ use lazy_static::lazy_static;
 use rand::prelude::*;
 use regex::{Captures, Regex};
 
+/// Gender
+///
+/// This is used to set the grammatical gender of an expression.
 #[derive(Debug, Clone, Copy)]
 pub enum Gender {
+    /// He
     Male,
+    /// She
     Female,
+    /// Neutral gender or when it isn't set
     Neutral,
 }
 
@@ -31,12 +37,22 @@ struct Replacement {
     pub content: Vec<String>,
 }
 
+/// Generator. Main structure of this library.
+///
+/// The generator is used to add symbols and their replacement grammar, either directly
+/// with the `add` method, or using JSON syntax with `add_json`.
+///
+/// Symbols can then be instantiated with the `instantiate` or `instantiate_with_seed` methods.
+///
+/// It is also possible to use the `msg` method to quickly transform a message that uses
+/// elements added to the generator.
 pub struct Generator {
     replaced: HashMap<String, Replaced>,
     replacements: HashMap<String, Replacement>,
 }
 
 impl Generator {
+    /// Creates a new, empty Generator.
     pub fn new() -> Self {
         Generator {
             replacements: HashMap::new(),
@@ -122,6 +138,7 @@ impl Generator {
         self.add_move(symbol, c)
     }
 
+    /// Similar to `add`, but consume the arguments instead of taking a reference.
     pub fn add_move(&mut self, mut symbol: String, mut content: Vec<String>) -> Result<()> {
         lazy_static! {
             static ref RE: Regex = Regex::new(r"(.*)\[(\w*)\]").unwrap();
@@ -418,6 +435,29 @@ impl Generator {
     }
 
     /// Instantiate a single message without adding it as a symbol
+    ///
+    /// Sometimes you want to simply generate a message without having to add it to the
+    /// generator (via `add` or `add_json`). This method allows you to do just that. You
+    /// can optionally pass a set of symbols and their replacement string. While random
+    /// choice is not supported for these values, you can use the rest of Genere syntax
+    /// for gender and capitalization.
+    ///
+    /// # Arguments
+    ///
+    /// * s: a string (or `&str`) containing the text you want to display, which can used
+    /// the `{symbol}` syntax to expand other symbols to their replacements.
+    /// * v: a list of pairs containing symbols and replacements values (can be empty).
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use genere::Generator;
+    /// let gen = Generator::new();
+    /// let s = gen.msg("Our hero, {name}. He/She[name] uses a {weapon}.",
+    ///            &[("name", "John[m]"),
+    ///            ("weapon", "sword")]).unwrap();
+    /// assert_eq!(&s, "Our hero, John. He uses a sword.");
+    /// ```
     pub fn msg<S>(&self, s: S, v: &[(&str, &str)]) -> Result<String>  where
         S: Into<String>, {
         let mut replaced = self.replaced.clone();
@@ -685,6 +725,6 @@ fn msg() {
     let result = gen.msg("This is {DOG}", &[]).unwrap();
     assert_eq!(&result, "This is A GOOD DOG");
 
-    let result = gen.msg("{doggo} is {DOG}", &[("doggo", "Zyma")]).unwrap();
-    assert_eq!(&result, "Zyma is A GOOD DOG");
+    let result = gen.msg("{doggo} is {DOG}, he/she[doggo] is so cute!", &[("doggo", "Zyma[f]")]).unwrap();
+    assert_eq!(&result, "Zyma is A GOOD DOG, she is so cute!");
 }
